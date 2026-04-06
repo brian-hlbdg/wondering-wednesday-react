@@ -1,47 +1,43 @@
-// src/app/(dashboard)/current/page.tsx
+// src/app/(dashboard)/archive/[questionId]/page.tsx
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import type { Answer, UserProfile, DiscussionWithUser } from '@/types';
 import { AnswerForm } from '@/components/AnswerForm';
 import { EditAnswerDialog } from '@/components/EditAnswerDialog';
 import { VotingButton } from '@/components/VotingButton';
 import { DiscussionDialog } from '@/components/DiscussionDialog';
+import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
-// Extended type for answers with joined data
 interface AnswerWithRelations extends Answer {
   user: UserProfile | null;
   votes: Array<{ count: number }>;
   discussions: Array<{ count: number }>;
 }
 
-export default async function CurrentQuestionPage() {
+export default async function ArchiveQuestionPage({
+  params,
+}: {
+  params: { questionId: string };
+}) {
   const supabase = await createClient();
-
-  // Get current user
   const { data: { user } } = await supabase.auth.getUser();
-  
+
   if (!user) {
     redirect('/login');
   }
 
-  // Get active question
-  const { data: question } = await supabase
+  const { questionId } = params;
+
+  // Get the question
+  const { data: question, error: questionError } = await supabase
     .from('questions')
     .select('*')
-    .eq('is_active', true)
+    .eq('id', questionId)
     .single();
 
-  if (!question) {
-    return (
-      <div className="text-center py-12">
-        <h1 className="text-2xl font-bold text-gray-900">
-          No active question this week!
-        </h1>
-        <p className="text-gray-600 mt-2">
-          Check back on Wednesday at 9am for the next question.
-        </p>
-      </div>
-    );
+  if (questionError || !question) {
+    notFound();
   }
 
   // Get user's answer (if exists)
@@ -64,7 +60,7 @@ export default async function CurrentQuestionPage() {
     .eq('question_id', question.id)
     .order('created_at', { ascending: false });
 
-  // Get user's votes for these answers
+  // Get user's votes
   const { data: userVotes } = await supabase
     .from('votes')
     .select('answer_id')
@@ -73,7 +69,7 @@ export default async function CurrentQuestionPage() {
 
   const votedAnswerIds = new Set(userVotes?.map(v => v.answer_id) || []);
 
-  // Get discussions for each answer
+  // Get discussions
   const answerIds = answers?.map(a => a.id) || [];
   const { data: allDiscussions } = await supabase
     .from('discussions')
@@ -84,7 +80,6 @@ export default async function CurrentQuestionPage() {
     .in('answer_id', answerIds)
     .order('created_at', { ascending: true });
 
-  // Group discussions by answer_id
   const discussionsByAnswer = (allDiscussions || []).reduce((acc, discussion) => {
     if (!acc[discussion.answer_id]) {
       acc[discussion.answer_id] = [];
@@ -95,14 +90,36 @@ export default async function CurrentQuestionPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Breadcrumb */}
+      <div className="mb-6">
+        <Link 
+          href="/archive"
+          className="text-sm text-blue-600 hover:underline"
+        >
+          ← Back to Archive
+        </Link>
+      </div>
+
       {/* Question Header */}
       <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          {question.question_text}
-        </h1>
-        <p className="text-sm text-gray-500">
-          This week's question • {answers?.length || 0} answers
-        </p>
+        <div className="flex justify-between items-start mb-4">
+          <h1 className="text-3xl font-bold text-gray-900 flex-1">
+            {question.question_text}
+          </h1>
+          {question.is_active && (
+            <Badge className="bg-green-100 text-green-800">Active Now</Badge>
+          )}
+        </div>
+        <div className="flex gap-4 text-sm text-gray-500">
+          {question.active_from && (
+            <span>
+              Active: {new Date(question.active_from).toLocaleDateString()}
+              {question.active_until && ` - ${new Date(question.active_until).toLocaleDateString()}`}
+            </span>
+          )}
+          <span>•</span>
+          <span>{answers?.length || 0} answers</span>
+        </div>
       </div>
 
       {/* User's Answer Section */}
@@ -110,7 +127,7 @@ export default async function CurrentQuestionPage() {
         <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
           <h2 className="text-xl font-semibold mb-4">Share Your Answer</h2>
           <p className="text-gray-600 mb-4">
-            You haven't answered this question yet. What do you think?
+            You can still answer this question even though it's archived!
           </p>
           <AnswerForm questionId={question.id} />
         </div>
@@ -136,7 +153,7 @@ export default async function CurrentQuestionPage() {
       {/* All Answers */}
       <div>
         <h2 className="text-2xl font-semibold mb-6">
-          Community Answers ({answers?.length || 0})
+          All Answers ({answers?.length || 0})
         </h2>
         
         {answers && answers.length > 0 ? (
@@ -197,7 +214,7 @@ export default async function CurrentQuestionPage() {
         ) : (
           <div className="text-center py-12 bg-white rounded-lg shadow-sm">
             <p className="text-gray-600">
-              No answers yet. Be the first to share your thoughts!
+              No answers yet. Be the first to answer this question!
             </p>
           </div>
         )}

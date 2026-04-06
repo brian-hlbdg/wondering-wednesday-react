@@ -207,12 +207,202 @@ export type Database = {
           },
         ]
       }
+      session_questions: {
+        Row: {
+          id: string
+          question_text: string
+          category: 'date' | 'friend_group' | 'deep' | 'party'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          question_text: string
+          category: 'date' | 'friend_group' | 'deep' | 'party'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          question_text?: string
+          category?: 'date' | 'friend_group' | 'deep' | 'party'
+          created_at?: string
+        }
+        Relationships: []
+      }
+      play_sessions: {
+        Row: {
+          id: string
+          room_code: string
+          host_user_id: string
+          categories: string[]
+          allow_guests: boolean
+          status: 'lobby' | 'active' | 'ended'
+          current_question_id: string | null
+          current_asker_index: number
+          question_unlocked_at: string | null
+          question_index: number
+          created_at: string
+          ended_at: string | null
+        }
+        Insert: {
+          id?: string
+          room_code: string
+          host_user_id: string
+          categories: string[]
+          allow_guests?: boolean
+          status?: 'lobby' | 'active' | 'ended'
+          current_question_id?: string | null
+          current_asker_index?: number
+          question_unlocked_at?: string | null
+          question_index?: number
+          created_at?: string
+          ended_at?: string | null
+        }
+        Update: {
+          id?: string
+          room_code?: string
+          host_user_id?: string
+          categories?: string[]
+          allow_guests?: boolean
+          status?: 'lobby' | 'active' | 'ended'
+          current_question_id?: string | null
+          current_asker_index?: number
+          question_unlocked_at?: string | null
+          question_index?: number
+          created_at?: string
+          ended_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "play_sessions_host_user_id_fkey"
+            columns: ["host_user_id"]
+            isOneToOne: false
+            referencedRelation: "users_profile"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "play_sessions_current_question_id_fkey"
+            columns: ["current_question_id"]
+            isOneToOne: false
+            referencedRelation: "session_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      play_participants: {
+        Row: {
+          id: string
+          session_id: string
+          user_id: string | null
+          display_name: string
+          is_host: boolean
+          join_order: number
+          joined_at: string
+          left_at: string | null
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          user_id?: string | null
+          display_name: string
+          is_host?: boolean
+          join_order: number
+          joined_at?: string
+          left_at?: string | null
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          user_id?: string | null
+          display_name?: string
+          is_host?: boolean
+          join_order?: number
+          joined_at?: string
+          left_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "play_participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "play_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "play_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_profile"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      play_session_log: {
+        Row: {
+          id: string
+          session_id: string
+          question_id: string
+          asker_participant_id: string
+          shown_at: string
+          skipped: boolean
+          skip_reason: string | null
+          skip_requested_by: string | null
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          question_id: string
+          asker_participant_id: string
+          shown_at?: string
+          skipped?: boolean
+          skip_reason?: string | null
+          skip_requested_by?: string | null
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          question_id?: string
+          asker_participant_id?: string
+          shown_at?: string
+          skipped?: boolean
+          skip_reason?: string | null
+          skip_requested_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "play_session_log_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "play_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "play_session_log_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "session_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      advance_session_question: {
+        Args: {
+          p_session_id: string
+          p_skip?: boolean
+          p_skip_reason?: string | null
+        }
+        Returns: void
+      }
+      start_play_session: {
+        Args: {
+          p_session_id: string
+        }
+        Returns: void
+      }
     }
     Enums: {
       [_ in never]: never
